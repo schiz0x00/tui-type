@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native sound dependency
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
+      - name: Formatting
+        run: cargo fmt --all -- --check
+      - name: Lints
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Tests
+        run: cargo test --all-targets --all-features --locked
+      - name: Documentation
+        run: cargo doc --no-deps --document-private-items --all-features --locked
+      - name: Package
+        run: cargo package --locked
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned cargo-audit
+        run: cargo install cargo-audit --locked --version 0.22.2
+      - name: Audit locked dependencies
+        run: cargo audit --deny warnings
