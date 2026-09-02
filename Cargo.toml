@@ -1,0 +1,51 @@
+[package]
+name = "cmd-type"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "A terminal-based typing test inspired by Monkeytype"
+license = "MIT"
+repository = "https://github.com/schiz0x00/cmd-type"
+homepage = "https://github.com/schiz0x00/cmd-type"
+documentation = "https://docs.rs/cmd-type"
+readme = "README.md"
+keywords = ["typing", "terminal", "tui", "cli"]
+categories = ["command-line-utilities"]
+include = [
+    "src/**",
+    "tests/**",
+    "assets/**",
+    "Cargo.toml",
+    "Cargo.lock",
+    "README.md",
+    "PLAN.md",
+    "SECURITY.md",
+    "LICENSE",
+    "rust-toolchain.toml",
+]
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm_0_29"] }
+crossterm = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+clap = { version = "4", features = ["derive"] }
+directories = "6"
+fs4 = "1.1"
+tempfile = "3.27"
+unicode-segmentation = "1.13"
+unicode-normalization = "0.1.25"
+unicode-width = "0.2.2"
+
+[features]
+default = []
+sound = ["dep:rodio"]
+
+[dependencies.rodio]
+version = "0.22.2"
+optional = true
+default-features = false
+features = ["playback"]
