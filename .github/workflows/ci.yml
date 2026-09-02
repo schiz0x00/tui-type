@@ -13,7 +13,7 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install native sound dependency
         run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
       - name: Formatting
@@ -30,7 +30,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install pinned cargo-audit
         run: cargo install cargo-audit --locked --version 0.22.2
       - name: Audit locked dependencies
