@@ -15,7 +15,7 @@ pub const MAX_CUSTOM_TEXT_BYTES: u64 = 1024 * 1024;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "cmd-type",
+    name = "tui-type",
     version,
     about = "A terminal-based typing test inspired by Monkeytype"
 )]
@@ -270,8 +270,8 @@ mod tests {
 
     #[test]
     fn numeric_boundaries_are_validated_by_clap() {
-        assert!(Cli::try_parse_from(["cmd-type", "--mode", "words", "--words", "0"]).is_err());
-        assert!(Cli::try_parse_from(["cmd-type", "--mode", "timed", "--time", "3601"]).is_err());
+        assert!(Cli::try_parse_from(["tui-type", "--mode", "words", "--words", "0"]).is_err());
+        assert!(Cli::try_parse_from(["tui-type", "--mode", "timed", "--time", "3601"]).is_err());
     }
 
     #[test]

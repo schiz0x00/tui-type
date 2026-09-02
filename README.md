@@ -1,6 +1,6 @@
-# cmd-type
+# tui-type
 
-`cmd-type` is a terminal typing test inspired by [Monkeytype](https://monkeytype.com), built with Rust, Ratatui, and Crossterm.
+`tui-type` is a terminal typing test inspired by [Monkeytype](https://monkeytype.com), built with Rust, Ratatui, and Crossterm.
 
 ## Features
 
@@ -15,7 +15,7 @@
 
 ```bash
 cargo build --release --locked
-install -m 755 target/release/cmd-type ~/.local/bin/cmd-type
+install -m 755 target/release/tui-type ~/.local/bin/tui-type
 ```
 
 For sound on Debian or Ubuntu, install ALSA's development package and enable the feature:
@@ -30,7 +30,7 @@ If `sound = true` is configured but the feature was not compiled, or no audio de
 ## Usage
 
 ```text
-Usage: cmd-type [OPTIONS]
+Usage: tui-type [OPTIONS]
 
 Options:
       --mode <MODE>       timed, words, quote, custom, or endless
@@ -47,12 +47,12 @@ Options:
 Examples:
 
 ```bash
-cmd-type --mode timed --time 30
-cmd-type --mode words --words 100
-cmd-type --file ./practice.txt
-cmd-type --mode endless --wordlist ./words.txt
-printf 'first line\n\tsecond line  ' | cmd-type --mode custom
-cmd-type --history
+tui-type --mode timed --time 30
+tui-type --mode words --words 100
+tui-type --file ./practice.txt
+tui-type --mode endless --wordlist ./words.txt
+printf 'first line\n\tsecond line  ' | tui-type --mode custom
+tui-type --history
 ```
 
 Piped custom text is read before the UI opens; on Unix, keyboard input and rendering then use the controlling terminal (`/dev/tty`). Consequently the pipe form must be launched from an interactive terminal. Leading and trailing whitespace is preserved, while CRLF is normalized to LF.
@@ -77,7 +77,7 @@ Conflicting options fail explicitly. In particular, `--time` requires `--mode ti
 
 ## Configuration and history
 
-Configuration follows the operating system's standard application directory. On Linux this is `$XDG_CONFIG_HOME/cmd-type/config.toml`, or `$HOME/.config/cmd-type/config.toml` when `XDG_CONFIG_HOME` is unset. macOS and Windows use their native conventions.
+Configuration follows the operating system's standard application directory. On Linux this is `$XDG_CONFIG_HOME/tui-type/config.toml`, or `$HOME/.config/tui-type/config.toml` when `XDG_CONFIG_HOME` is unset. macOS and Windows use their native conventions.
 
 ```toml
 schema_version = 1

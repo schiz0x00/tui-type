@@ -1,7 +1,7 @@
 use std::process::Command;
 
 fn command() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_cmd-type"))
+    Command::new(env!("CARGO_BIN_EXE_tui-type"))
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn irrelevant_wordlist_is_an_explicit_error() {
 #[test]
 fn corrupt_history_cli_error_has_a_failure_exit_status() {
     let directory = tempfile::tempdir().unwrap();
-    let config_directory = directory.path().join("cmd-type");
+    let config_directory = directory.path().join("tui-type");
     std::fs::create_dir(&config_directory).unwrap();
     std::fs::write(config_directory.join("history.json"), "not json").unwrap();
 

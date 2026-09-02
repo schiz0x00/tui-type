@@ -1,13 +1,13 @@
 [package]
-name = "cmd-type"
+name = "tui-type"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.88"
 description = "A terminal-based typing test inspired by Monkeytype"
 license = "MIT"
-repository = "https://github.com/schiz0x00/cmd-type"
-homepage = "https://github.com/schiz0x00/cmd-type"
-documentation = "https://docs.rs/cmd-type"
+repository = "https://github.com/schiz0x00/tui-type"
+homepage = "https://github.com/schiz0x00/tui-type"
+documentation = "https://docs.rs/tui-type"
 readme = "README.md"
 keywords = ["typing", "terminal", "tui", "cli"]
 categories = ["command-line-utilities"]
@@ -18,7 +18,6 @@ include = [
     "Cargo.toml",
     "Cargo.lock",
     "README.md",
-    "PLAN.md",
     "SECURITY.md",
     "LICENSE",
     "rust-toolchain.toml",

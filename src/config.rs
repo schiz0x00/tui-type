@@ -33,7 +33,7 @@ impl Default for Config {
 
 impl Config {
     pub fn config_dir() -> io::Result<PathBuf> {
-        ProjectDirs::from("", "", "cmd-type")
+        ProjectDirs::from("", "", "tui-type")
             .map(|dirs| dirs.config_dir().to_path_buf())
             .ok_or_else(|| io::Error::other("could not determine the platform configuration path"))
     }

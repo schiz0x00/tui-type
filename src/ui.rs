@@ -45,7 +45,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 fn render_small_terminal(frame: &mut Frame, app: &App, area: Rect) {
     let theme = app.active_theme();
     let message = format!(
-        "cmd-type\n\nTerminal: {}×{}\nNeed at least {MIN_WIDTH}×{MIN_HEIGHT}\n\nResize or press Esc.",
+        "tui-type\n\nTerminal: {}×{}\nNeed at least {MIN_WIDTH}×{MIN_HEIGHT}\n\nResize or press Esc.",
         area.width, area.height
     );
     let paragraph = Paragraph::new(message)
@@ -75,7 +75,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
         .map(|label| ListItem::new(Line::from(format!("  {label}  "))).style(fg(app)))
         .collect();
     let list = List::new(items)
-        .block(titled_block(app, " cmd-type "))
+        .block(titled_block(app, " tui-type "))
         .highlight_style(selected(app))
         .highlight_symbol("› ")
         .repeat_highlight_symbol(true);
