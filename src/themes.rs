@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use ratatui::style::Color;
 
 #[derive(Debug, Clone)]
@@ -13,24 +15,28 @@ pub struct Theme {
     pub border: Color,
 }
 
+static PALETTE: LazyLock<Vec<Theme>> = LazyLock::new(|| {
+    vec![
+        Theme::catppuccin_mocha(),
+        Theme::dracula(),
+        Theme::gruvbox_dark(),
+        Theme::tokyo_night(),
+        Theme::nord(),
+        Theme::monokai(),
+    ]
+});
+
 impl Theme {
-    pub fn all() -> Vec<Theme> {
-        vec![
-            Theme::catppuccin_mocha(),
-            Theme::dracula(),
-            Theme::gruvbox_dark(),
-            Theme::tokyo_night(),
-            Theme::nord(),
-            Theme::monokai(),
-        ]
+    pub fn all() -> &'static [Theme] {
+        PALETTE.as_slice()
     }
 
-    pub fn by_name(name: &str) -> Option<Theme> {
-        Self::all().into_iter().find(|t| t.name == name)
+    pub fn by_name(name: &str) -> Option<&'static Theme> {
+        Self::all().iter().find(|theme| theme.name == name)
     }
 
     pub fn names() -> Vec<String> {
-        Self::all().into_iter().map(|theme| theme.name).collect()
+        Self::all().iter().map(|theme| theme.name.clone()).collect()
     }
 
     pub fn catppuccin_mocha() -> Theme {

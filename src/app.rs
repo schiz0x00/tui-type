@@ -31,6 +31,10 @@ pub enum AppState {
 pub struct App {
     pub state: AppState,
     pub theme: Theme,
+    /// Theme shown while browsing the theme list. Set from arrow keys,
+    /// promoted to `theme` on Enter, and dropped on Esc so the committed
+    /// theme is restored. Always `None` outside `AppState::ThemeSelect`.
+    pub preview_theme: Option<Theme>,
     pub mode: Mode,
     pub menu_index: usize,
     pub mode_index: usize,
@@ -181,12 +185,14 @@ impl App {
         history_store: HistoryStore,
     ) -> io::Result<Self> {
         config.validate()?;
-        let theme = Theme::by_name(&config.theme).ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("unknown theme {:?}", config.theme),
-            )
-        })?;
+        let theme = Theme::by_name(&config.theme)
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("unknown theme {:?}", config.theme),
+                )
+            })?
+            .clone();
         let mode = config.default_mode.clone();
         let mode_index = Mode::all()
             .iter()
@@ -214,6 +220,7 @@ impl App {
         Ok(App {
             state: AppState::Menu,
             theme,
+            preview_theme: None,
             mode,
             menu_index: 0,
             mode_index,
@@ -228,6 +235,12 @@ impl App {
             ticker,
             history_store,
         })
+    }
+
+    /// Theme that should drive rendering right now: the live preview when
+    /// browsing, otherwise the committed theme.
+    pub fn active_theme(&self) -> &Theme {
+        self.preview_theme.as_ref().unwrap_or(&self.theme)
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) {
@@ -284,17 +297,26 @@ impl App {
     }
 
     fn handle_theme_select_key(&mut self, key: KeyEvent) {
-        let items = Theme::all().len();
+        let palette = Theme::all();
+        let items = palette.len();
         match key.code {
-            KeyCode::Esc => self.state = AppState::Menu,
+            KeyCode::Esc => {
+                self.preview_theme = None;
+                self.state = AppState::Menu;
+            }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.theme_index = (self.theme_index + items - 1) % items;
+                self.preview_theme = Some(palette[self.theme_index].clone());
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.theme_index = (self.theme_index + 1) % items;
+                self.preview_theme = Some(palette[self.theme_index].clone());
             }
             KeyCode::Enter => {
-                self.theme = Theme::all()[self.theme_index].clone();
+                self.theme = self
+                    .preview_theme
+                    .take()
+                    .unwrap_or_else(|| palette[self.theme_index].clone());
                 self.state = AppState::Menu;
             }
             _ => {}
@@ -666,6 +688,108 @@ mod tests {
         harness.app.handle_key(key(KeyCode::Char('x')));
         assert_eq!(harness.app.state, AppState::Results);
         assert_eq!(harness.app.last_result.as_ref().unwrap().total_chars, 0);
+    }
+
+    #[test]
+    fn theme_select_previews_each_theme_on_navigation_and_commits_on_enter() {
+        let mut harness = app_for(Mode::Timed(30), None);
+        let original = harness.app.theme.clone();
+        harness.app.state = AppState::ThemeSelect;
+
+        harness.app.handle_key(key(KeyCode::Down));
+        assert_eq!(harness.app.state, AppState::ThemeSelect);
+        assert!(harness.app.preview_theme.is_some());
+        assert_ne!(harness.app.active_theme().name, original.name);
+        assert_eq!(harness.app.theme.name, original.name);
+
+        let previewed = harness.app.active_theme().clone();
+        harness.app.handle_key(key(KeyCode::Enter));
+        assert_eq!(harness.app.state, AppState::Menu);
+        assert!(harness.app.preview_theme.is_none());
+        assert_eq!(harness.app.theme.name, previewed.name);
+    }
+
+    #[test]
+    fn theme_select_j_and_k_keys_preview_in_their_directions() {
+        let mut harness = app_for(Mode::Timed(30), None);
+        let original = harness.app.theme.clone();
+        harness.app.state = AppState::ThemeSelect;
+
+        harness.app.handle_key(key(KeyCode::Char('j')));
+        let down_target = harness.app.active_theme().name.clone();
+        assert_ne!(down_target, original.name);
+
+        harness.app.handle_key(key(KeyCode::Char('k')));
+        assert_eq!(harness.app.active_theme().name, original.name);
+
+        harness.app.handle_key(key(KeyCode::Char('k')));
+        let wrapped = harness.app.active_theme().name.clone();
+        assert_ne!(wrapped, original.name);
+        assert_eq!(
+            wrapped,
+            Theme::all().get(Theme::all().len() - 1).unwrap().name
+        );
+    }
+
+    #[test]
+    fn theme_select_enter_without_arrows_commits_the_highlighted_theme() {
+        let mut harness = app_for(Mode::Timed(30), None);
+        let original = harness.app.theme.clone();
+        harness.app.state = AppState::ThemeSelect;
+        harness.app.theme_index = 3;
+
+        harness.app.handle_key(key(KeyCode::Enter));
+        assert_eq!(harness.app.state, AppState::Menu);
+        assert!(harness.app.preview_theme.is_none());
+        assert_eq!(harness.app.theme.name, Theme::all().get(3).unwrap().name);
+        assert_ne!(harness.app.theme.name, original.name);
+    }
+
+    #[test]
+    fn theme_select_reverts_on_escape_without_committing() {
+        let mut harness = app_for(Mode::Timed(30), None);
+        let original = harness.app.theme.clone();
+        harness.app.state = AppState::ThemeSelect;
+
+        harness.app.handle_key(key(KeyCode::Down));
+        harness.app.handle_key(key(KeyCode::Down));
+        assert_ne!(harness.app.active_theme().name, original.name);
+
+        harness.app.handle_key(key(KeyCode::Esc));
+        assert_eq!(harness.app.state, AppState::Menu);
+        assert!(harness.app.preview_theme.is_none());
+        assert_eq!(harness.app.theme.name, original.name);
+    }
+
+    #[test]
+    fn preview_theme_is_cleared_when_leaving_theme_select_by_any_key() {
+        let mut harness = app_for(Mode::Timed(30), None);
+        harness.app.state = AppState::ThemeSelect;
+        harness.app.handle_key(key(KeyCode::Down));
+        assert!(harness.app.preview_theme.is_some());
+
+        harness.app.handle_key(key(KeyCode::Esc));
+        assert!(harness.app.preview_theme.is_none());
+
+        harness.app.state = AppState::ThemeSelect;
+        harness.app.handle_key(key(KeyCode::Down));
+        harness.app.handle_key(key(KeyCode::Enter));
+        assert!(harness.app.preview_theme.is_none());
+    }
+
+    #[test]
+    fn active_theme_returns_preview_when_set_and_committed_otherwise() {
+        let mut harness = app_for(Mode::Timed(30), None);
+        let committed = harness.app.theme.clone();
+        assert_eq!(harness.app.active_theme().name, committed.name);
+
+        let next = Theme::all()
+            .iter()
+            .find(|candidate| candidate.name != committed.name)
+            .expect("at least one alternative theme")
+            .clone();
+        harness.app.preview_theme = Some(next.clone());
+        assert_eq!(harness.app.active_theme().name, next.name);
     }
 
     #[test]

@@ -5,6 +5,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::app::{typing_counts, App, AppState, TypingState};
 use crate::modes::{Mode, ModeConfig};
+use crate::themes::Theme;
 
 const MIN_WIDTH: u16 = 32;
 const MIN_HEIGHT: u16 = 10;
@@ -15,7 +16,8 @@ pub fn render(frame: &mut Frame, app: &App) {
     if area.is_empty() {
         return;
     }
-    frame.render_widget(Block::default().bg(app.theme.bg), area);
+    let theme = app.active_theme();
+    frame.render_widget(Block::default().bg(theme.bg), area);
     if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
         render_small_terminal(frame, app, area);
         return;
@@ -41,12 +43,13 @@ pub fn render(frame: &mut Frame, app: &App) {
 }
 
 fn render_small_terminal(frame: &mut Frame, app: &App, area: Rect) {
+    let theme = app.active_theme();
     let message = format!(
         "cmd-type\n\nTerminal: {}×{}\nNeed at least {MIN_WIDTH}×{MIN_HEIGHT}\n\nResize or press Esc.",
         area.width, area.height
     );
     let paragraph = Paragraph::new(message)
-        .style(Style::default().fg(app.theme.fg).bg(app.theme.bg))
+        .style(Style::default().fg(theme.fg).bg(theme.bg))
         .alignment(Alignment::Center)
         .wrap(Wrap { trim: true });
     frame.render_widget(paragraph, area);
@@ -82,7 +85,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     if let Some(notice) = &app.notice {
         frame.render_widget(
             Paragraph::new(notice.as_str())
-                .style(Style::default().fg(app.theme.incorrect))
+                .style(Style::default().fg(app.active_theme().incorrect))
                 .alignment(Alignment::Center)
                 .wrap(Wrap { trim: true }),
             chunks[1],
@@ -116,11 +119,12 @@ fn render_mode_select(frame: &mut Frame, app: &App, area: Rect) {
 
 fn render_theme_select(frame: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::vertical([Constraint::Min(2), Constraint::Length(1)]).split(area);
-    let items: Vec<ListItem> = crate::themes::Theme::all()
-        .into_iter()
+    let row_bg = app.active_theme().bg;
+    let items: Vec<ListItem> = Theme::all()
+        .iter()
         .map(|theme| {
             ListItem::new(format!("  {}  ", theme.name))
-                .style(Style::default().fg(theme.accent).bg(app.theme.bg))
+                .style(Style::default().fg(theme.accent).bg(row_bg))
         })
         .collect();
     let list = List::new(items)
@@ -148,6 +152,7 @@ fn render_typing(frame: &mut Frame, app: &App, typing: &TypingState, area: Rect)
 }
 
 fn render_typing_header(frame: &mut Frame, app: &App, typing: &TypingState, area: Rect) {
+    let theme = app.active_theme();
     let elapsed = typing.elapsed().as_secs_f64();
     let (wpm, accuracy) = compute_live_stats(typing, elapsed);
     let mode = match typing.mode_config {
@@ -163,12 +168,9 @@ fn render_typing_header(frame: &mut Frame, app: &App, typing: &TypingState, area
     let line = Line::from(vec![
         Span::styled(format!(" {mode} "), accent_bold(app)),
         Span::raw("  "),
-        Span::styled(speed, Style::default().fg(app.theme.correct)),
+        Span::styled(speed, Style::default().fg(theme.correct)),
         Span::raw("  "),
-        Span::styled(
-            format!("{accuracy:.1}%"),
-            Style::default().fg(app.theme.accent),
-        ),
+        Span::styled(format!("{accuracy:.1}%"), Style::default().fg(theme.accent)),
     ]);
     frame.render_widget(
         Paragraph::new(line)
@@ -195,6 +197,7 @@ fn visible_typing_lines(
     width: usize,
     height: usize,
 ) -> Vec<Line<'static>> {
+    let theme = app.active_theme();
     let width = width.max(1);
     let height = height.max(1);
     let cursor = typing.input.len().min(typing.target.len());
@@ -214,15 +217,15 @@ fn visible_typing_lines(
         let value = actual.unwrap_or(expected);
         let style = if let Some(actual) = actual {
             if actual == expected {
-                Style::default().fg(app.theme.correct)
+                Style::default().fg(theme.correct)
             } else {
                 Style::default()
-                    .fg(app.theme.incorrect)
+                    .fg(theme.incorrect)
                     .add_modifier(Modifier::UNDERLINED)
             }
         } else if index == cursor {
             Style::default()
-                .fg(app.theme.cursor)
+                .fg(theme.cursor)
                 .add_modifier(Modifier::REVERSED)
         } else {
             subtle(app)
@@ -265,7 +268,7 @@ fn visible_typing_lines(
             .push(Span::styled(
                 " ",
                 Style::default()
-                    .fg(app.theme.cursor)
+                    .fg(theme.cursor)
                     .add_modifier(Modifier::REVERSED),
             ));
     }
@@ -295,26 +298,27 @@ fn render_typing_footer(frame: &mut Frame, app: &App, typing: &TypingState, area
 
 fn render_results(frame: &mut Frame, app: &App, result: &crate::stats::TestResult, area: Rect) {
     let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(area);
+    let theme = app.active_theme();
     let mut lines = vec![
         Line::from(vec![
             Span::styled("wpm         ", subtle_bold(app)),
             Span::styled(
                 format!("{:.1}", result.wpm),
-                Style::default().fg(app.theme.correct),
+                Style::default().fg(theme.correct),
             ),
         ]),
         Line::from(vec![
             Span::styled("raw wpm     ", subtle_bold(app)),
             Span::styled(
                 format!("{:.1}", result.raw_wpm),
-                Style::default().fg(app.theme.accent),
+                Style::default().fg(theme.accent),
             ),
         ]),
         Line::from(vec![
             Span::styled("accuracy    ", subtle_bold(app)),
             Span::styled(
                 format!("{:.1}%", result.accuracy),
-                Style::default().fg(app.theme.accent),
+                Style::default().fg(theme.accent),
             ),
         ]),
         Line::from(vec![
@@ -336,7 +340,7 @@ fn render_results(frame: &mut Frame, app: &App, result: &crate::stats::TestResul
         lines.push(Line::from(""));
         lines.push(Line::styled(
             notice.clone(),
-            Style::default().fg(app.theme.incorrect),
+            Style::default().fg(theme.incorrect),
         ));
     }
     frame.render_widget(
@@ -354,6 +358,7 @@ fn render_results(frame: &mut Frame, app: &App, result: &crate::stats::TestResul
 
 fn render_history(frame: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(area);
+    let theme = app.active_theme();
     let mut lines = vec![Line::styled(
         "WPM      ACC       MODE       LOCAL TIME",
         subtle_bold(app),
@@ -371,11 +376,11 @@ fn render_history(frame: &mut Frame, app: &App, area: Rect) {
             lines.push(Line::from(vec![
                 Span::styled(
                     format!("{:<8.1} ", result.wpm),
-                    Style::default().fg(app.theme.correct),
+                    Style::default().fg(theme.correct),
                 ),
                 Span::styled(
                     format!("{:<9.1}% ", result.accuracy),
-                    Style::default().fg(app.theme.accent),
+                    Style::default().fg(theme.accent),
                 ),
                 Span::styled(format!("{:<10} ", result.mode.short_label()), fg(app)),
                 Span::styled(
@@ -392,7 +397,7 @@ fn render_history(frame: &mut Frame, app: &App, area: Rect) {
     if let Some(notice) = &app.notice {
         lines.push(Line::styled(
             notice.clone(),
-            Style::default().fg(app.theme.incorrect),
+            Style::default().fg(theme.incorrect),
         ));
     }
     frame.render_widget(
@@ -421,10 +426,11 @@ fn titled_block<'a>(app: &App, title: &'a str) -> Block<'a> {
 }
 
 fn plain_block(app: &App) -> Block<'static> {
+    let theme = app.active_theme();
     Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(app.theme.border))
-        .bg(app.theme.bg)
+        .border_style(Style::default().fg(theme.border))
+        .bg(theme.bg)
 }
 
 fn centered_hint<'a>(app: &App, text: &'a str) -> Paragraph<'a> {
@@ -434,11 +440,13 @@ fn centered_hint<'a>(app: &App, text: &'a str) -> Paragraph<'a> {
 }
 
 fn fg(app: &App) -> Style {
-    Style::default().fg(app.theme.fg).bg(app.theme.bg)
+    let theme = app.active_theme();
+    Style::default().fg(theme.fg).bg(theme.bg)
 }
 
 fn subtle(app: &App) -> Style {
-    Style::default().fg(app.theme.subtle).bg(app.theme.bg)
+    let theme = app.active_theme();
+    Style::default().fg(theme.subtle).bg(theme.bg)
 }
 
 fn subtle_bold(app: &App) -> Style {
@@ -446,16 +454,18 @@ fn subtle_bold(app: &App) -> Style {
 }
 
 fn accent_bold(app: &App) -> Style {
+    let theme = app.active_theme();
     Style::default()
-        .fg(app.theme.accent)
-        .bg(app.theme.bg)
+        .fg(theme.accent)
+        .bg(theme.bg)
         .add_modifier(Modifier::BOLD)
 }
 
 fn selected(app: &App) -> Style {
+    let theme = app.active_theme();
     Style::default()
-        .fg(app.theme.bg)
-        .bg(app.theme.accent)
+        .fg(theme.bg)
+        .bg(theme.accent)
         .add_modifier(Modifier::BOLD)
 }
 
@@ -521,6 +531,54 @@ mod tests {
         assert_eq!(
             compute_live_stats(app.typing.as_ref().unwrap(), 0.01).0,
             None
+        );
+    }
+
+    #[test]
+    fn theme_preview_drives_every_visible_layer_of_the_theme_select_screen() {
+        let (mut app, _directory) = app();
+        let original = app.theme.clone();
+        let next = Theme::all()
+            .iter()
+            .find(|candidate| candidate.name != original.name && candidate.bg != original.bg)
+            .expect("at least one alternative theme with a distinct background")
+            .clone();
+        app.theme_index = 2;
+        app.preview_theme = Some(next.clone());
+        app.state = AppState::ThemeSelect;
+
+        let width = 80u16;
+        let height = 24u16;
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let buffer = terminal.backend().buffer().clone();
+
+        // Global background fill follows the preview.
+        assert_eq!(buffer.cell((0, 0)).unwrap().bg, next.bg);
+
+        // Scan the list area (below the title border, above the footer hint)
+        // for one cell using the preview background and another using the
+        // preview accent — those together prove both the row style and the
+        // selection highlight honor the live preview.
+        let (mut saw_row_bg, mut saw_selection_bg) = (false, false);
+        for y in 1..(height - 1) {
+            for x in 0..width {
+                let cell = buffer.cell((x, y)).unwrap();
+                if cell.bg == next.bg {
+                    saw_row_bg = true;
+                } else if cell.bg == next.accent {
+                    saw_selection_bg = true;
+                }
+            }
+        }
+        assert!(
+            saw_row_bg,
+            "preview background must paint at least one list cell",
+        );
+        assert!(
+            saw_selection_bg,
+            "preview accent must paint the highlighted list row",
         );
     }
 }
