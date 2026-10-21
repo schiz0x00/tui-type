@@ -44,7 +44,7 @@ default = []
 sound = ["dep:rodio"]
 
 [dependencies.rodio]
-version = "0.22.2"
+version = "0.23.0"
 optional = true
 default-features = false
 features = ["playback"]
